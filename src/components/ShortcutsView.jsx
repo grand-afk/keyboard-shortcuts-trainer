@@ -19,12 +19,15 @@ export default function ShortcutsView({
   showRateCol,
   toggleRateCol,
   searchQuery,
+  selectedApps = [],
+  addOpen = false,
+  setAddOpen,
+  addKey = '+',
 }) {
   const [page,       setPage]       = useState(1)
   const [sort,       setSort]       = useState({ key: null, dir: 'asc' })
   const [rated,      setRated]      = useState({})
   const [editTarget, setEditTarget] = useState(null)
-  const [showAdd,    setShowAdd]    = useState(false)
 
   const sorted = useMemo(() => {
     if (!sort.key) return shortcuts
@@ -73,7 +76,7 @@ export default function ShortcutsView({
       <div className="study-header">
         <h2 className="study-title">{searchQuery ? `🔍 "${searchQuery}"` : '⌨️ Shortcuts'}</h2>
         <div className="shortcuts-header-right">
-          {!searchQuery && <button className="btn-add" onClick={() => setShowAdd(true)} title="Add a new shortcut">+ Add</button>}
+          {!searchQuery && <button className="btn-add" onClick={() => setAddOpen?.(true)} title={`Add a new shortcut [${addKey}]`}>+ Add<kbd className="kbd-hint">{addKey}</kbd></button>}
           <span className="study-progress">{sorted.length} shortcut{sorted.length !== 1 ? 's' : ''}</span>
         </div>
       </div>
@@ -142,7 +145,7 @@ export default function ShortcutsView({
       )}
 
       {editTarget && <EditModal shortcut={editTarget} onClose={() => setEditTarget(null)} />}
-      {showAdd    && <AddShortcutModal onClose={() => setShowAdd(false)} />}
+      {addOpen    && <AddShortcutModal selectedApps={selectedApps} onClose={() => setAddOpen?.(false)} />}
     </div>
   )
 }

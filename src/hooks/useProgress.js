@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import { calculateNextReview, defaultCardState } from '../utils/sm2'
+import { getAllShortcuts } from '../data/index'
 
 const STORAGE_KEY = 'keydeck:progress'
 
@@ -115,16 +116,24 @@ export function useProgress() {
   )
 
   /**
-   * Export ALL progress + overrides as a JSON blob the user can save.
-   * Also bundles the current overrides so nothing is lost.
+   * Export ALL progress + overrides + shortcuts as a JSON blob the user can save.
+   * Shortcuts map lets the full deck definition travel with the backup.
    */
   const exportData = useCallback(() => {
     try {
       const overridesRaw = localStorage.getItem('keydeck:overrides')
+      const allShortcuts = getAllShortcuts()
+      const shortcutsMap = {}
+      allShortcuts.forEach((s) => {
+        if (s.win || s.mac) {
+          shortcutsMap[s.id] = { win: s.win || '', mac: s.mac || '' }
+        }
+      })
       const payload = {
         exportedAt: new Date().toISOString(),
         progress,
         overrides: overridesRaw ? JSON.parse(overridesRaw) : {},
+        shortcuts: shortcutsMap,
       }
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -140,11 +149,17 @@ export function useProgress() {
 
   /**
    * Import a previously exported JSON file.
-   * Merges (or replaces) progress and overrides.
+   * Merges (or replaces) progress, overrides, and shortcuts.
+   *
+   * Merge strategy for shortcuts: imported shortcut wins unless the user
+   * already has a local keydeck:overrides entry for that card.
+   * Explicit overrides always win over shortcuts.
    */
   const importData = useCallback((jsonText, mode = 'merge') => {
     try {
       const payload = JSON.parse(jsonText)
+
+      // Progress
       setProgress((prev) => {
         const newProgress = mode === 'replace'
           ? payload.progress
@@ -152,14 +167,30 @@ export function useProgress() {
         saveProgress(newProgress)
         return newProgress
       })
-      if (payload.overrides && Object.keys(payload.overrides).length > 0) {
-        const existingRaw = localStorage.getItem('keydeck:overrides')
-        const existing = existingRaw ? JSON.parse(existingRaw) : {}
-        const merged = mode === 'replace'
-          ? payload.overrides
-          : { ...existing, ...payload.overrides }
-        localStorage.setItem('keydeck:overrides', JSON.stringify(merged))
+
+      // Overrides + shortcuts
+      const existingRaw = localStorage.getItem('keydeck:overrides')
+      const existing = existingRaw ? JSON.parse(existingRaw) : {}
+
+      // Start from existing (merge) or empty (replace)
+      let merged = mode === 'replace' ? {} : { ...existing }
+
+      // Apply shortcuts at lower priority — only fill gaps
+      if (payload.shortcuts && typeof payload.shortcuts === 'object') {
+        Object.entries(payload.shortcuts).forEach(([id, combo]) => {
+          if (!merged[id]) {
+            const { win, mac } = typeof combo === 'object' ? combo : { win: combo, mac: '' }
+            if (win || mac) merged[id] = { win: win || '', mac: mac || '' }
+          }
+        })
       }
+
+      // Apply explicit overrides at higher priority — always win
+      if (payload.overrides && typeof payload.overrides === 'object') {
+        merged = { ...merged, ...payload.overrides }
+      }
+
+      localStorage.setItem('keydeck:overrides', JSON.stringify(merged))
       return true
     } catch (e) {
       console.error('Import failed', e)

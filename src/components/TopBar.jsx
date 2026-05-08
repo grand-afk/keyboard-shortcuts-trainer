@@ -26,6 +26,7 @@ export default function TopBar({
   onSearchChange,
   onToggleSearch,
   onOpenFlagged,
+  sysKeys = { add: '+', favourites: 'F', search: '/' },
 }) {
   const importRef = useRef(null)
   const searchRef = useRef(null)
@@ -40,7 +41,7 @@ export default function TopBar({
     if (!file) return
     const reader = new FileReader()
     reader.onload = (ev) => {
-      const ok = onImport(ev.target.result, 'merge')
+      const ok = onImport(ev.target.result, 'merge', file.name)
       alert(ok ? '✅ Data imported successfully!' : '❌ Import failed — check the file format.')
     }
     reader.readAsText(file)
@@ -90,20 +91,20 @@ export default function TopBar({
           <button
             className={`icon-btn ${searchOpen ? 'icon-btn--active' : ''}`}
             onClick={onToggleSearch}
-            title="Search shortcuts [/]"
+            title={`Search shortcuts [${sysKeys.search}]`}
             aria-pressed={searchOpen}
           >
-            🔍<kbd className="kbd-hint">/</kbd>
+            🔍<kbd className="kbd-hint">{sysKeys.search}</kbd>
           </button>
 
           {/* Favourites — left of the right-side cluster */}
           <button
             className={`icon-btn ${showFavourites ? 'icon-btn--active' : ''}`}
             onClick={toggleShowFavourites}
-            title="Toggle favourites filter [F]"
+            title={`Toggle favourites filter [${sysKeys.favourites}]`}
             aria-pressed={showFavourites}
           >
-            ⭐<kbd className="kbd-hint">F</kbd>
+            ⭐<kbd className="kbd-hint">{sysKeys.favourites}</kbd>
           </button>
 
           {/* Flagged shortcuts */}

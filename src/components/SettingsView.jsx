@@ -3,9 +3,79 @@ import { APPS } from '../data/index'
 import AppIcon from './AppIcon'
 
 // Letters reserved for system-level shortcuts — cannot be assigned to app chips
-// A = All filter, M = Mac platform, W = Win platform, F = Favourites
-const RESERVED_KEYS  = new Set(['A', 'M', 'W', 'F'])
-const RESERVED_LABEL = 'A (All), M (Mac), W (Win), F (Favourites)'
+// A = All filter, M = Mac platform, W = Win platform
+const RESERVED_KEYS  = new Set(['A', 'M', 'W'])
+const RESERVED_LABEL = 'A (All), M (Mac), W (Win)'
+
+const SYS_SHORTCUTS = [
+  { name: 'add',        label: '+ Add shortcut',    defaultKey: '+' },
+  { name: 'favourites', label: '⭐ Favourites filter', defaultKey: 'F' },
+  { name: 'search',     label: '🔍 Search',           defaultKey: '/' },
+]
+
+function SysKeyRow({ name, label, defaultKey, currentKey, onChange }) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal]         = useState(currentKey ?? defaultKey)
+  const isCustom = currentKey != null && currentKey !== defaultKey
+
+  function save() {
+    const k = val.trim()
+    if (k) { onChange(name, k === defaultKey ? null : k) }
+    setEditing(false)
+  }
+
+  return (
+    <div className="key-remap-row">
+      <span className="key-remap-label">{label}</span>
+      {editing ? (
+        <>
+          <input
+            className="sys-key-input"
+            maxLength={2}
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') save()
+              if (e.key === 'Escape') setEditing(false)
+            }}
+            autoFocus
+          />
+          <button className="key-remap-btn" onClick={save} title="Confirm">✓</button>
+          <button className="key-remap-reset" onClick={() => setEditing(false)} title="Cancel">✕</button>
+        </>
+      ) : (
+        <>
+          <button
+            className={`key-remap-btn${isCustom ? ' key-remap-btn--custom' : ''}`}
+            onClick={() => { setVal(currentKey ?? defaultKey); setEditing(true) }}
+            title="Click to reassign"
+          >
+            {currentKey ?? defaultKey}
+          </button>
+          {isCustom && (
+            <button
+              className="key-remap-reset"
+              onClick={() => onChange(name, null)}
+              title={`Reset to default (${defaultKey})`}
+              aria-label="Reset to default"
+            >
+              ↺
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function fmtDate(iso) {
+  if (!iso) return null
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      dateStyle: 'medium', timeStyle: 'short',
+    })
+  } catch { return iso }
+}
 
 const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
@@ -21,6 +91,9 @@ export default function SettingsView({
   keyOverrides = {},
   setKeyOverride,
   resetKeyOverride,
+  sysKeyOverrides = {},
+  setSysKeyOverride,
+  backupMeta = {},
 }) {
   // Custom (Bookmarks) shortcuts are managed via Add Shortcut — exclude from grids
   const filterableApps = APPS.filter((a) => a.id !== 'custom')
@@ -206,6 +279,26 @@ export default function SettingsView({
         })()}
       </section>
 
+      {/* ── System shortcuts ──────────────────────────────────── */}
+      <section className="settings-section">
+        <h3 className="settings-section-title">System shortcuts</h3>
+        <p className="settings-hint">
+          Click a key badge to reassign it. Press the new key and hit Enter, or Escape to cancel.
+        </p>
+        <div className="key-remap-grid">
+          {SYS_SHORTCUTS.map(({ name, label, defaultKey }) => (
+            <SysKeyRow
+              key={name}
+              name={name}
+              label={label}
+              defaultKey={defaultKey}
+              currentKey={sysKeyOverrides[name] ?? null}
+              onChange={setSysKeyOverride}
+            />
+          ))}
+        </div>
+      </section>
+
       {/* ── Preferences ───────────────────────────────────────── */}
       <section className="settings-section">
         <h3 className="settings-section-title">Preferences</h3>
@@ -265,6 +358,38 @@ export default function SettingsView({
 
         </div>
       </section>
+
+      {/* ── Backup ────────────────────────────────────────────── */}
+      <section className="settings-section">
+        <h3 className="settings-section-title">Backup</h3>
+        <p className="settings-hint">
+          Use ⬇️ to export and ⬆️ to import in the toolbar. Importing always <strong>merges</strong> —
+          imported data fills in gaps without overwriting local progress or favourites.
+        </p>
+        <div className="settings-prefs">
+          <div className="settings-pref-row">
+            <div className="settings-pref-text">
+              <span className="settings-pref-label">Last exported</span>
+              <span className="settings-pref-desc">
+                {backupMeta.lastExport
+                  ? `${backupMeta.lastExport.filename} · ${fmtDate(backupMeta.lastExport.timestamp)}`
+                  : 'Never'}
+              </span>
+            </div>
+          </div>
+          <div className="settings-pref-row">
+            <div className="settings-pref-text">
+              <span className="settings-pref-label">Last imported</span>
+              <span className="settings-pref-desc">
+                {backupMeta.lastImport
+                  ? `${backupMeta.lastImport.filename} · ${fmtDate(backupMeta.lastImport.timestamp)}`
+                  : 'Never'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   )
 }

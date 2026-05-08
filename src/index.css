@@ -1496,6 +1496,19 @@ th:hover .col-hide-btn { opacity: 1; }
   background: var(--border);
 }
 
+.sys-key-input {
+  width: 2.5rem;
+  text-align: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 4px;
+  outline: none;
+}
+
 /* ── Prefix indicator (shown in chip bar while waiting for 2nd key) ──────── */
 .prefix-indicator {
   display: inline-flex;

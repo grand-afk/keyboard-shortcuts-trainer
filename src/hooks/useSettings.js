@@ -58,6 +58,8 @@ export function useSettings() {
   const darkMode       = settings.darkMode        ?? true   // default: dark
   const showRateCol    = settings.showRateCol     ?? true   // default: visible
   const keyOverrides   = settings.keyOverrides    ?? {}     // { appId: 'X' | '' }
+  const sysKeyOverrides = settings.sysKeyOverrides ?? {}    // { add, favourites, search }
+  const backupMeta     = settings.backupMeta      ?? {}     // { lastExport, lastImport }
 
   // Keep URL param in sync
   useEffect(() => { setPlatformInUrl(platform) }, [platform])
@@ -137,6 +139,22 @@ export function useSettings() {
     update({ keyOverrides: next })
   }, [keyOverrides, update])
 
+  /** Set or clear a system shortcut key. Pass null to reset to default. */
+  const setSysKeyOverride = useCallback((name, key) => {
+    const next = { ...sysKeyOverrides }
+    if (key === null || key === undefined) {
+      delete next[name]
+    } else {
+      next[name] = key
+    }
+    update({ sysKeyOverrides: next })
+  }, [sysKeyOverrides, update])
+
+  /** Record last export or import metadata. */
+  const setBackupMeta = useCallback((patch) => {
+    update({ backupMeta: { ...backupMeta, ...patch } })
+  }, [backupMeta, update])
+
   /** Remove override and revert to the APPS default key. */
   const resetKeyOverride = useCallback((appId) => {
     const next = { ...keyOverrides }
@@ -161,5 +179,7 @@ export function useSettings() {
     darkMode, toggleDarkMode,
     showRateCol, toggleRateCol,
     keyOverrides, setKeyOverride, resetKeyOverride,
+    sysKeyOverrides, setSysKeyOverride,
+    backupMeta, setBackupMeta,
   }
 }

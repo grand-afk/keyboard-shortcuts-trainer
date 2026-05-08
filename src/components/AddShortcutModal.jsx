@@ -7,8 +7,12 @@ import { APPS, addCustomShortcut } from '../data/index'
  * The shortcut is saved to localStorage and the page reloads so the new
  * entry appears immediately (same pattern as EditModal).
  */
-export default function AddShortcutModal({ onClose }) {
-  const [app,     setApp]     = useState(APPS[0].id)
+export default function AddShortcutModal({ onClose, selectedApps = [] }) {
+  const filteredApps = selectedApps.length > 0
+    ? APPS.filter((a) => selectedApps.includes(a.id))
+    : APPS
+  const defaultApp = filteredApps[0]?.id ?? APPS[0].id
+  const [app,     setApp]     = useState(defaultApp)
   const [cat,     setCat]     = useState('')
   const [action,  setAction]  = useState('')
   const [mac,     setMac]     = useState('')
@@ -64,7 +68,7 @@ export default function AddShortcutModal({ onClose }) {
               value={app}
               onChange={(e) => setApp(e.target.value)}
             >
-              {APPS.map((a) => (
+              {filteredApps.map((a) => (
                 <option key={a.id} value={a.id}>{a.label}</option>
               ))}
             </select>

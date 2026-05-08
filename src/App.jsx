@@ -41,6 +41,9 @@ export default function App() {
   // Flagged modal state
   const [flaggedOpen, setFlaggedOpen] = useState(false)
 
+  // Add-shortcut modal state (lifted so keyboard shortcut can open it)
+  const [addShortcutOpen, setAddShortcutOpen] = useState(false)
+
   // Clear pending prefix after 1.5 s if no second key arrives
   useEffect(() => {
     if (!pendingPrefix) return
@@ -56,6 +59,8 @@ export default function App() {
     darkMode, toggleDarkMode,
     showRateCol, toggleRateCol,
     keyOverrides, setKeyOverride, resetKeyOverride,
+    sysKeyOverrides, setSysKeyOverride,
+    backupMeta, setBackupMeta,
   } = useSettings()
 
   const {
@@ -102,6 +107,13 @@ export default function App() {
     setView(v)
   }, [closeSearch])
 
+  // ── Effective system keys (configurable, with defaults) ──────────────────
+  const sysKeys = {
+    add:        sysKeyOverrides.add        ?? '+',
+    favourites: sysKeyOverrides.favourites ?? 'F',
+    search:     sysKeyOverrides.search     ?? '/',
+  }
+
   // ── Global keyboard shortcuts ─────────────────────────────────────────────
   useEffect(() => {
     function onKey(e) {
@@ -111,13 +123,14 @@ export default function App() {
         if (pendingPrefix) { setPendingPrefix(null); return }
         if (searchOpen) { closeSearch(); return }
         if (flaggedOpen) { setFlaggedOpen(false); return }
+        if (addShortcutOpen) { setAddShortcutOpen(false); return }
         return
       }
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
-      // '/' opens search
-      if (e.key === '/') { e.preventDefault(); setSearchOpen(true); return }
+      // Search key (default /)
+      if (e.key === sysKeys.search) { e.preventDefault(); setSearchOpen(true); return }
 
       // ── Two-char 0-prefix sequences (e.g. 0M = Meet, 0W = Word) ──────────
       if (pendingPrefix === '0') {
@@ -147,7 +160,15 @@ export default function App() {
       })
       if (appByKey) { toggleApp(appByKey.id); return }
 
-      // ── System shortcuts ───────────────────────────────────────────────────
+      // ── Configurable system shortcuts ─────────────────────────────────────
+      if (e.key === sysKeys.add) {
+        e.preventDefault(); navigateTo('shortcuts'); setAddShortcutOpen(true); return
+      }
+      if (e.key.toUpperCase() === sysKeys.favourites.toUpperCase()) {
+        toggleShowFavourites(); return
+      }
+
+      // ── Static system shortcuts ────────────────────────────────────────────
       switch (e.key) {
         case 'a': case 'A': setSelectedApps([]); break          // A = All (clear filter)
         case 'm': case 'M': setPlatform('mac'); break            // M = Mac platform
@@ -157,13 +178,25 @@ export default function App() {
         case '3': navigateTo(VIEWS[2]); break
         case '4': navigateTo(VIEWS[3]); break
         case '5': navigateTo(VIEWS[4]); break
-        case 'f': case 'F': toggleShowFavourites(); break        // F = Favourites
         default: break
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [setPlatform, toggleShowFavourites, toggleApp, setSelectedApps, searchOpen, flaggedOpen, closeSearch, navigateTo, keyOverrides, pendingPrefix])
+  }, [setPlatform, toggleShowFavourites, toggleApp, setSelectedApps, searchOpen, flaggedOpen, addShortcutOpen, closeSearch, navigateTo, keyOverrides, pendingPrefix, sysKeys.add, sysKeys.favourites, sysKeys.search])
+
+  // ── Export/import wrappers that record backup metadata ────────────────────
+  const handleExport = useCallback(() => {
+    exportData()
+    const filename = `keydeck-backup-${new Date().toISOString().slice(0, 10)}.json`
+    setBackupMeta({ lastExport: { timestamp: new Date().toISOString(), filename } })
+  }, [exportData, setBackupMeta])
+
+  const handleImport = useCallback((jsonText, mode = 'merge', filename = '') => {
+    const ok = importData(jsonText, mode)
+    if (ok) setBackupMeta({ lastImport: { timestamp: new Date().toISOString(), filename } })
+    return ok
+  }, [importData, setBackupMeta])
 
   // Common props shared by all table views
   const tableProps = {
@@ -193,8 +226,9 @@ export default function App() {
         toggleShowFavourites={toggleShowFavourites}
         keyOverrides={keyOverrides}
         pendingPrefix={pendingPrefix}
-        onExport={exportData}
-        onImport={importData}
+        onExport={handleExport}
+        onImport={handleImport}
+        sysKeys={sysKeys}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
         searchOpen={searchOpen}
@@ -215,6 +249,10 @@ export default function App() {
             showFavourites={showFavourites}
             toggleShowFavourites={toggleShowFavourites}
             searchQuery={searchQuery}
+            selectedApps={selectedApps}
+            addOpen={addShortcutOpen}
+            setAddOpen={setAddShortcutOpen}
+            addKey={sysKeys.add}
           />
         ) : (
           <>
@@ -224,6 +262,10 @@ export default function App() {
                 shortcuts={visibleShortcuts}
                 showFavourites={showFavourites}
                 toggleShowFavourites={toggleShowFavourites}
+                selectedApps={selectedApps}
+                addOpen={addShortcutOpen}
+                setAddOpen={setAddShortcutOpen}
+                addKey={sysKeys.add}
               />
             )}
             {view === 'practise' && (
@@ -253,6 +295,9 @@ export default function App() {
                 keyOverrides={keyOverrides}
                 setKeyOverride={setKeyOverride}
                 resetKeyOverride={resetKeyOverride}
+                sysKeyOverrides={sysKeyOverrides}
+                setSysKeyOverride={setSysKeyOverride}
+                backupMeta={backupMeta}
               />
             )}
           </>
