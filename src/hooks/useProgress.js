@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { calculateNextReview, defaultCardState } from '../utils/sm2'
 import { getAllShortcuts } from '../data/index'
+import { buildExportPayload, applyImport } from '../utils/backup'
 
 const STORAGE_KEY = 'keydeck:progress'
 
@@ -18,6 +19,15 @@ function saveProgress(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   } catch (e) {
     console.warn('Could not save progress to localStorage', e)
+  }
+}
+
+function readJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch {
+    return fallback
   }
 }
 
@@ -116,29 +126,22 @@ export function useProgress() {
   )
 
   /**
-   * Export ALL progress + overrides + shortcuts as a JSON blob the user can save.
-   * Shortcuts map lets the full deck definition travel with the backup.
+   * Export ALL progress + overrides + shortcuts + custom as a JSON blob the user can save.
+   * Shortcuts include full card attributes (action, cat, win, mac, priority, app) for
+   * complete deck portability across browsers.
    */
   const exportData = useCallback(() => {
     try {
-      const overridesRaw = localStorage.getItem('keydeck:overrides')
-      const allShortcuts = getAllShortcuts()
-      const shortcutsMap = {}
-      allShortcuts.forEach((s) => {
-        if (s.win || s.mac) {
-          shortcutsMap[s.id] = { win: s.win || '', mac: s.mac || '' }
-        }
-      })
-      const payload = {
-        exportedAt: new Date().toISOString(),
-        progress,
-        overrides: overridesRaw ? JSON.parse(overridesRaw) : {},
-        shortcuts: shortcutsMap,
-      }
+      const overrides       = readJSON('keydeck:overrides', {})
+      const customShortcuts = readJSON('keydeck:custom', [])
+      const allShortcuts    = getAllShortcuts()
+
+      const payload = buildExportPayload(progress, allShortcuts, overrides, customShortcuts)
+
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
       a.download = `keydeck-backup-${new Date().toISOString().slice(0, 10)}.json`
       a.click()
       URL.revokeObjectURL(url)
@@ -149,54 +152,45 @@ export function useProgress() {
 
   /**
    * Import a previously exported JSON file.
-   * Merges (or replaces) progress, overrides, and shortcuts.
    *
-   * Merge strategy for shortcuts: imported shortcut wins unless the user
-   * already has a local keydeck:overrides entry for that card.
-   * Explicit overrides always win over shortcuts.
+   * Merge strategy:
+   *   progress  — imported card wins per ID; full replace in 'replace' mode
+   *   shortcuts — imported combo fills gaps UNLESS a local override already exists
+   *   overrides — imported explicit overrides always win
+   *   custom    — union of existing + imported (no duplicate IDs); replace in 'replace' mode
+   *
+   * Returns true on success, false on parse/apply error.
    */
   const importData = useCallback((jsonText, mode = 'merge') => {
     try {
       const payload = JSON.parse(jsonText)
 
-      // Progress
-      setProgress((prev) => {
-        const newProgress = mode === 'replace'
-          ? payload.progress
-          : { ...prev, ...payload.progress }
-        saveProgress(newProgress)
-        return newProgress
+      const existing = {
+        progress:        progress,
+        overrides:       readJSON('keydeck:overrides', {}),
+        customShortcuts: readJSON('keydeck:custom', []),
+      }
+
+      const result = applyImport(payload, existing, mode)
+
+      // Write progress to React state + localStorage
+      setProgress(() => {
+        saveProgress(result.progress)
+        return result.progress
       })
 
-      // Overrides + shortcuts
-      const existingRaw = localStorage.getItem('keydeck:overrides')
-      const existing = existingRaw ? JSON.parse(existingRaw) : {}
+      // Write overrides + custom shortcuts directly to localStorage.
+      // The next render of getShortcuts() will pick up the new custom shortcuts
+      // automatically since it reads keydeck:custom fresh on each call.
+      localStorage.setItem('keydeck:overrides', JSON.stringify(result.overrides))
+      localStorage.setItem('keydeck:custom', JSON.stringify(result.customShortcuts))
 
-      // Start from existing (merge) or empty (replace)
-      let merged = mode === 'replace' ? {} : { ...existing }
-
-      // Apply shortcuts at lower priority — only fill gaps
-      if (payload.shortcuts && typeof payload.shortcuts === 'object') {
-        Object.entries(payload.shortcuts).forEach(([id, combo]) => {
-          if (!merged[id]) {
-            const { win, mac } = typeof combo === 'object' ? combo : { win: combo, mac: '' }
-            if (win || mac) merged[id] = { win: win || '', mac: mac || '' }
-          }
-        })
-      }
-
-      // Apply explicit overrides at higher priority — always win
-      if (payload.overrides && typeof payload.overrides === 'object') {
-        merged = { ...merged, ...payload.overrides }
-      }
-
-      localStorage.setItem('keydeck:overrides', JSON.stringify(merged))
       return true
     } catch (e) {
       console.error('Import failed', e)
       return false
     }
-  }, [])
+  }, [progress])
 
   return {
     progress,

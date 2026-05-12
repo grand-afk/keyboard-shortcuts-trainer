@@ -12,4 +12,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/keydeck/',
+  test: {
+    // Pure unit tests — no DOM required for sm2.js or backup.js
+    environment: 'node',
+  },
 })
