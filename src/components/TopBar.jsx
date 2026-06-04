@@ -26,6 +26,7 @@ export default function TopBar({
   onSearchChange,
   onToggleSearch,
   onOpenFlagged,
+  onFavouriteFirst,
   sysKeys = { add: '+', favourites: 'F', search: '/' },
 }) {
   const importRef = useRef(null)
@@ -183,7 +184,10 @@ export default function TopBar({
             placeholder="Search shortcuts, apps, categories, key combos…"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Escape') onToggleSearch() }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') { onToggleSearch(); return }
+              if (e.key === 'Tab' && searchQuery) { e.preventDefault(); onFavouriteFirst?.() }
+            }}
             onBlur={() => {
               // iOS Safari stays zoomed after the keyboard dismisses.
               // Briefly adding maximum-scale=1 snaps it back without

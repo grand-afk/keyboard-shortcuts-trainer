@@ -94,6 +94,11 @@ export default function App() {
       : shortcuts
   }, [shortcuts, searchQuery, showFavourites, progress])
 
+  // Favourite the first visible result while search is active
+  const handleFavouriteFirst = useCallback(() => {
+    if (visibleShortcuts[0]) toggleFavourite(visibleShortcuts[0].id)
+  }, [visibleShortcuts, toggleFavourite])
+
   // ── Close search + reset iOS zoom ─────────────────────────────────────
   const closeSearch = useCallback(() => {
     setSearchOpen(false)
@@ -239,6 +244,7 @@ export default function App() {
           else setSearchOpen(true)
         }}
         onOpenFlagged={() => setFlaggedOpen(true)}
+        onFavouriteFirst={handleFavouriteFirst}
       />
 
       <main className="main-content">
