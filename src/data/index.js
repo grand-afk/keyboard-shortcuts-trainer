@@ -62,7 +62,7 @@ export const APPS = [
   { id: 'excel',           iconUrl: MS('excel'),                      icon: '📗', label: 'Excel',       key: 'X'  },  // kept X
   { id: 'powerpoint',      iconUrl: MS('powerpoint'),                 icon: '📕', label: 'PowerPoint',  key: 'P'  },
   { id: 'word',            iconUrl: MS('word'),                       icon: '📘', label: 'Word',        key: '0W' },  // W = Win platform
-  { id: 'onenote',         iconUrl: MS('onenote'),                    icon: '📒', label: 'OneNote',     key: '0E' },  // E = OneNote
+  { id: 'onenote',         iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/Microsoft_Office_OneNote_%282019%E2%80%932025%29.svg', icon: '📒', label: 'OneNote', key: '0E' },  // E = OneNote
   { id: 'outlook',         iconUrl: MS('outlook'),                    icon: '📨', label: 'Outlook',     key: 'O'  },
   { id: 'teams',           iconUrl: MS('teams'),                      icon: '👥', label: 'Teams',       key: '0T' },  // T = Tasks
 
