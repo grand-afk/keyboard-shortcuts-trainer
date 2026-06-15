@@ -1,5 +1,6 @@
 import excel        from './excel.json'
 import powerpoint   from './powerpoint.json'
+import onenote      from './onenote.json'
 import gmail        from './gmail.json'
 import googleChat   from './google-chat.json'
 import googleCal    from './google-calendar.json'
@@ -61,6 +62,7 @@ export const APPS = [
   { id: 'excel',           iconUrl: MS('excel'),                      icon: '📗', label: 'Excel',       key: 'X'  },  // kept X
   { id: 'powerpoint',      iconUrl: MS('powerpoint'),                 icon: '📕', label: 'PowerPoint',  key: 'P'  },
   { id: 'word',            iconUrl: MS('word'),                       icon: '📘', label: 'Word',        key: '0W' },  // W = Win platform
+  { id: 'onenote',         iconUrl: MS('onenote'),                    icon: '📒', label: 'OneNote',     key: '0E' },  // E = OneNote
   { id: 'outlook',         iconUrl: MS('outlook'),                    icon: '📨', label: 'Outlook',     key: 'O'  },
   { id: 'teams',           iconUrl: MS('teams'),                      icon: '👥', label: 'Teams',       key: '0T' },  // T = Tasks
 
@@ -94,6 +96,7 @@ const ALL_SHORTCUTS = [
   ...tag('gemini',           gemini),
   ...tag('notebooklm',       notebooklm),
   ...tag('word',             word),
+  ...tag('onenote',          onenote),
   ...tag('outlook',          outlook),
   ...tag('teams',            teams),
   ...tag('windows',          windows),
